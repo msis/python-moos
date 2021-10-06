@@ -82,6 +82,15 @@ if(NOT DEFINED ${_Python}_EXECUTABLE)
 
 endif()
 
+if(NOT ${_Python}_EXECUTABLE STREQUAL PYBIND11_PYTHON_EXECUTABLE_LAST)
+  # Detect changes to the Python version/binary in subsequent CMake runs, and refresh config if needed
+  unset(PYTHON_IS_DEBUG CACHE)
+  unset(PYTHON_MODULE_EXTENSION CACHE)
+  set(PYBIND11_PYTHON_EXECUTABLE_LAST
+      "${${_Python}_EXECUTABLE}"
+      CACHE INTERNAL "Python executable during the last CMake run")
+endif()
+
 if(NOT DEFINED PYTHON_IS_DEBUG)
   # Debug check - see https://stackoverflow.com/questions/646518/python-how-to-detect-debug-Interpreter
   execute_process(
@@ -230,7 +239,7 @@ function(pybind11_add_module target_name)
   endif()
 
   # If we don't pass a WITH_SOABI or WITHOUT_SOABI, use our own default handling of extensions
-  if(NOT ARG_WITHOUT_SOABI OR NOT "WITH_SOABI" IN_LIST ARG_UNPARSED_ARGUMENTS)
+  if(NOT ARG_WITHOUT_SOABI AND NOT "WITH_SOABI" IN_LIST ARG_UNPARSED_ARGUMENTS)
     pybind11_extension(${target_name})
   endif()
 
