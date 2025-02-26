@@ -1,6 +1,6 @@
 python-moos
 ===========
-***UPDATED FOR python3.12
+UPDATED FOR python3.12
 python bindings for [MOOS](https://github.com/themoos/core-moos)
 
 # Build Statuses
