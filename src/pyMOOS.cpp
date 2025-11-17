@@ -361,6 +361,48 @@ public:
         return true;
     }
 
+    // Configuration reading methods
+    bool GetConfigurationParam(const std::string& sParam, std::string& sVal) {
+        return m_MissionReader.GetConfigurationParam(sParam, sVal);
+    }
+
+    bool GetConfigurationParam(const std::string& sParam, double& dVal) {
+        return m_MissionReader.GetConfigurationParam(sParam, dVal);
+    }
+
+    bool GetConfigurationParam(const std::string& sParam, int& nVal) {
+        return m_MissionReader.GetConfigurationParam(sParam, nVal);
+    }
+
+    bool GetConfigurationParam(const std::string& sParam, bool& bVal) {
+        return m_MissionReader.GetConfigurationParam(sParam, bVal);
+    }
+
+    // Python-friendly wrappers that return tuples (success, value)
+    py::tuple GetConfigurationString(const std::string& sParam) {
+        std::string sVal;
+        bool bSuccess = m_MissionReader.GetConfigurationParam(sParam, sVal);
+        return py::make_tuple(bSuccess, sVal);
+    }
+
+    py::tuple GetConfigurationDouble(const std::string& sParam) {
+        double dVal = 0.0;
+        bool bSuccess = m_MissionReader.GetConfigurationParam(sParam, dVal);
+        return py::make_tuple(bSuccess, dVal);
+    }
+
+    py::tuple GetConfigurationInt(const std::string& sParam) {
+        int nVal = 0;
+        bool bSuccess = m_MissionReader.GetConfigurationParam(sParam, nVal);
+        return py::make_tuple(bSuccess, nVal);
+    }
+
+    py::tuple GetConfigurationBool(const std::string& sParam) {
+        bool bVal = false;
+        bool bSuccess = m_MissionReader.GetConfigurationParam(sParam, bVal);
+        return py::make_tuple(bSuccess, bVal);
+    }
+
 private:
     /** callback functions (stored) */
     py::object on_new_mail_object_;
@@ -740,6 +782,34 @@ PYBIND11_MODULE(pymoos, m) {
                     "Set the callback to be invoked at each iteration. "
                     "This is the main work loop of the application.",
                     py::arg("func"))
+        
+        .def("get_configuration_string",
+                    &MOOS::AppWrapper::GetConfigurationString,
+                    "Read a string parameter from the mission file configuration block. "
+                    "Returns a tuple (success, value) where success is True if the "
+                    "parameter was found.",
+                    py::arg("param"))
+        
+        .def("get_configuration_double",
+                    &MOOS::AppWrapper::GetConfigurationDouble,
+                    "Read a double parameter from the mission file configuration block. "
+                    "Returns a tuple (success, value) where success is True if the "
+                    "parameter was found.",
+                    py::arg("param"))
+        
+        .def("get_configuration_int",
+                    &MOOS::AppWrapper::GetConfigurationInt,
+                    "Read an integer parameter from the mission file configuration block. "
+                    "Returns a tuple (success, value) where success is True if the "
+                    "parameter was found.",
+                    py::arg("param"))
+        
+        .def("get_configuration_bool",
+                    &MOOS::AppWrapper::GetConfigurationBool,
+                    "Read a boolean parameter from the mission file configuration block. "
+                    "Returns a tuple (success, value) where success is True if the "
+                    "parameter was found.",
+                    py::arg("param"))
         
         ;
 

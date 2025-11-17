@@ -55,7 +55,12 @@ import pymoos
 app = pymoos.app()
 
 def on_startup():
-    app.set_app_freq(10.0)  # Hz
+    # Read configuration from mission file
+    success, freq = app.get_configuration_double('app_freq')
+    if success:
+        app.set_app_freq(freq)
+    else:
+        app.set_app_freq(10.0)  # Default Hz
     return True
 
 def on_connect_to_server():
@@ -69,8 +74,17 @@ app.set_on_start_up_callback(on_startup)
 app.set_on_connect_to_server_callback(on_connect_to_server)
 app.set_iterate_callback(iterate)
 
-app.run('localhost', 9000, 'my_app')
+# Optionally provide a mission file for configuration
+app.run('localhost', 9000, 'my_app', 'my_mission.moos')
 ```
+
+The `app` class supports reading configuration from MOOS mission files using:
+- `get_configuration_string(param)` - Read string parameters
+- `get_configuration_double(param)` - Read numeric parameters
+- `get_configuration_int(param)` - Read integer parameters
+- `get_configuration_bool(param)` - Read boolean parameters
+
+All methods return a tuple `(success, value)`.
 
 See `Documentation/examples/simpleapp.py` for a complete example.
 

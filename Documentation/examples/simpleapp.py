@@ -12,8 +12,30 @@ app = pymoos.app()
 # OnStartUp is called when the app first starts
 def on_startup():
     print("App starting up...")
-    app.set_app_freq(1.0)  # Set how often Iterate is called (Hz)
-    app.set_comms_freq(5.0)  # Set how often comms happen (Hz)
+    
+    # Read configuration from the mission file
+    # The mission file should have a ProcessConfig block for this app
+    success, freq = app.get_configuration_double('app_freq')
+    if success:
+        print(f"Setting app frequency from config: {freq} Hz")
+        app.set_app_freq(freq)
+    else:
+        print("Using default app frequency: 1.0 Hz")
+        app.set_app_freq(1.0)
+    
+    success, comms_freq = app.get_configuration_double('comms_freq')
+    if success:
+        print(f"Setting comms frequency from config: {comms_freq} Hz")
+        app.set_comms_freq(comms_freq)
+    else:
+        print("Using default comms frequency: 5.0 Hz")
+        app.set_comms_freq(5.0)
+    
+    # Read other configuration parameters
+    success, var_name = app.get_configuration_string('variable_name')
+    if success:
+        print(f"Will publish to variable: {var_name}")
+    
     return True
 
 # OnConnectToServer is called when connection to MOOSDB is established
@@ -52,6 +74,9 @@ def main():
     app.set_iterate_callback(iterate)
     
     # Run the application (this blocks until iterate returns False)
+    # You can optionally provide a mission file path for configuration:
+    # app.run('localhost', 9000, 'pymoos_simple_app', 'simpleapp.moos')
+    # Or run without a mission file (using defaults in on_startup):
     app.run('localhost', 9000, 'pymoos_simple_app')
 
 if __name__ == "__main__":
