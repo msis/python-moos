@@ -6,6 +6,7 @@
 #include "MOOS/libMOOS/Comms/MOOSMsg.h"
 #include "MOOS/libMOOS/Comms/MOOSCommClient.h"
 #include "MOOS/libMOOS/Comms/MOOSAsyncCommClient.h"
+#include "MOOS/libMOOS/App/MOOSApp.h"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl_bind.h>
@@ -215,6 +216,159 @@ private:
     /** close connection flag */
     bool closing_;
 };
+
+/** this is a class which wraps CMOOSApp to provide
+ * an interface more suitable for python wrapping
+ */
+class AppWrapper : public CMOOSApp {
+private:
+    typedef CMOOSApp BASE;
+public:
+
+    ~AppWrapper(){
+        // Clean shutdown
+    }
+
+    bool Run(const std::string & sServer, int Port, const std::string & sMyName, const std::string & sMissionFile = "") {
+        SetAppName(sMyName);
+        SetServer(sServer, Port);
+        if (!sMissionFile.empty()) {
+            SetMissionFile(sMissionFile);
+        }
+        return BASE::Run();
+    }
+
+    //we can support vectors of objects by not lists so
+    //here we have a function which copies a list to vector
+    MsgVector FetchMailAsVector() {
+        MsgVector v;
+        MOOSMSG_LIST M;
+        if (Fetch(M)) {
+            std::copy(M.begin(), M.end(), std::back_inserter(v));
+        }
+        return v;
+    }
+
+    /* python strings can be binary lets make this specific*/
+    bool NotifyBinary(const std::string& sKey, const std::string & sData,
+                      double dfTime) {
+        CMOOSMsg M(MOOS_NOTIFY, sKey, sData.size(), (void *) sData.data(),
+                   dfTime);
+        return BASE::m_Comms.Post(M);
+    }
+
+    // Virtual methods that can be overridden
+    bool OnNewMail(MOOSMSG_LIST &NewMail) override {
+        bool bResult = true;
+        
+        if (on_new_mail_object_) {
+            PyGILState_STATE gstate = PyGILState_Ensure();
+            try {
+                MsgVector v;
+                std::copy(NewMail.begin(), NewMail.end(), std::back_inserter(v));
+                py::object result = on_new_mail_object_(v);
+                bResult = py::bool_(result);
+            } catch (const py::error_already_set& e) {
+                PyGILState_Release(gstate);
+                std::string err_msg = "OnNewMail:: caught an exception thrown in python callback:\n";
+                err_msg.append(e.what());
+                throw pyMOOSException(err_msg.c_str());
+            }
+            PyGILState_Release(gstate);
+        }
+        
+        return bResult;
+    }
+
+    bool OnConnectToServer() override {
+        bool bResult = true;
+        
+        if (on_connect_to_server_object_) {
+            PyGILState_STATE gstate = PyGILState_Ensure();
+            try {
+                py::object result = on_connect_to_server_object_();
+                bResult = py::bool_(result);
+            } catch (const py::error_already_set& e) {
+                PyGILState_Release(gstate);
+                std::string err_msg = "OnConnectToServer:: caught an exception thrown in python callback:\n";
+                err_msg.append(e.what());
+                throw pyMOOSException(err_msg.c_str());
+            }
+            PyGILState_Release(gstate);
+        }
+        
+        return bResult;
+    }
+
+    bool OnStartUp() override {
+        bool bResult = true;
+        
+        if (on_start_up_object_) {
+            PyGILState_STATE gstate = PyGILState_Ensure();
+            try {
+                py::object result = on_start_up_object_();
+                bResult = py::bool_(result);
+            } catch (const py::error_already_set& e) {
+                PyGILState_Release(gstate);
+                std::string err_msg = "OnStartUp:: caught an exception thrown in python callback:\n";
+                err_msg.append(e.what());
+                throw pyMOOSException(err_msg.c_str());
+            }
+            PyGILState_Release(gstate);
+        }
+        
+        return bResult;
+    }
+
+    bool Iterate() override {
+        bool bResult = true;
+        
+        if (iterate_object_) {
+            PyGILState_STATE gstate = PyGILState_Ensure();
+            try {
+                py::object result = iterate_object_();
+                bResult = py::bool_(result);
+            } catch (const py::error_already_set& e) {
+                PyGILState_Release(gstate);
+                std::string err_msg = "Iterate:: caught an exception thrown in python callback:\n";
+                err_msg.append(e.what());
+                throw pyMOOSException(err_msg.c_str());
+            }
+            PyGILState_Release(gstate);
+        }
+        
+        return bResult;
+    }
+
+    // Setters for Python callbacks
+    bool SetOnNewMailCallback(py::object func) {
+        on_new_mail_object_ = func;
+        return true;
+    }
+
+    bool SetOnConnectToServerCallback(py::object func) {
+        on_connect_to_server_object_ = func;
+        return true;
+    }
+
+    bool SetOnStartUpCallback(py::object func) {
+        on_start_up_object_ = func;
+        return true;
+    }
+
+    bool SetIterateCallback(py::object func) {
+        iterate_object_ = func;
+        return true;
+    }
+
+private:
+    /** callback functions (stored) */
+    py::object on_new_mail_object_;
+    py::object on_connect_to_server_object_;
+    py::object on_start_up_object_;
+    py::object iterate_object_;
+};
+
 }
 ;//namesapce
 
@@ -501,6 +655,92 @@ PYBIND11_MODULE(pymoos, m) {
                     "a custom callback).",
                     py::arg("queue_name"), py::arg("msg_name"))
 
+        ;
+
+
+    /*********************************************************************
+                     CMOOSApp base class
+    *********************************************************************/
+
+    py::class_<CMOOSApp>(m, "base_app")
+        .def("register",static_cast<bool(CMOOSApp::*)
+                    (const std::string&, double)> (&CMOOSApp::Register),
+                    "Register for notification in changes of named variable.",
+                    py::arg("name"), py::arg("interval") = 0)
+        .def("notify",static_cast<bool(CMOOSApp::*)
+                    (const std::string&,
+                      const std::string&, double)> (&CMOOSApp::Notify),
+                    "Notify the MOOS community that something has changed.",
+                    py::arg("name"), py::arg("value"), py::arg("time") = -1.)
+        .def("notify",static_cast<bool(CMOOSApp::*)
+                    (const std::string&, double,
+                      double)> (&CMOOSApp::Notify),
+                    "Notify the MOOS community that something has changed.",
+                    py::arg("name"), py::arg("value"), py::arg("time") = -1.)
+        .def("get_app_name", &CMOOSApp::GetAppName,
+                    "Return the name of the application.")
+        .def("get_community_name", &CMOOSApp::GetCommunityName,
+                    "Return name of community the app is attached to.")
+        .def("is_connected", &CMOOSApp::IsConnected,
+                    "Return True if this app is connected to the server.")
+        .def("is_registered_for", &CMOOSApp::IsRegisteredFor,
+                    "Return True if we are registered for name variable")
+        .def("set_app_freq", &CMOOSApp::SetAppFreq,
+                    "Set the frequency at which Iterate() is called.",
+                    py::arg("freq"))
+        .def("get_app_freq", &CMOOSApp::GetAppFreq,
+                    "Get the frequency at which Iterate() is called.")
+        .def("set_comms_freq", &CMOOSApp::SetCommsFreq,
+                    "Set the frequency at which communications occur.",
+                    py::arg("freq"))
+        .def("get_comms_freq", &CMOOSApp::GetCommsFreq,
+                    "Get the frequency at which communications occur.")
+    ;
+
+
+    /*********************************************************************/
+    /** CMOOSApp WRAPPER CLASS FOR PYTHON                               */
+    /*********************************************************************/
+    
+    py::class_<MOOS::AppWrapper, CMOOSApp>(m, "app")
+        .def(py::init<>())
+
+        .def("run", &MOOS::AppWrapper::Run,
+                    "Run the MOOS application.",
+                    py::arg("server"), py::arg("port"), py::arg("name"), 
+                    py::arg("mission_file") = "")
+        
+        .def("fetch", &MOOS::AppWrapper::FetchMailAsVector,
+                    "Fetch incoming mail as a vector.")
+        
+        .def("notify_binary", &MOOS::AppWrapper::NotifyBinary,
+                    "Notify binary data. (specific to pymoos.)",
+                    py::arg("name"), py::arg("binary_data"), py::arg("time")=-1)
+        
+        .def("set_on_new_mail_callback",
+                    &MOOS::AppWrapper::SetOnNewMailCallback,
+                    "Set the callback to be invoked when new mail arrives. "
+                    "The callback will be passed a list of messages.",
+                    py::arg("func"))
+        
+        .def("set_on_connect_to_server_callback",
+                    &MOOS::AppWrapper::SetOnConnectToServerCallback,
+                    "Set the callback to be invoked when connected to the server. "
+                    "This is a good place to register for notifications.",
+                    py::arg("func"))
+        
+        .def("set_on_start_up_callback",
+                    &MOOS::AppWrapper::SetOnStartUpCallback,
+                    "Set the callback to be invoked at application startup. "
+                    "This is called before connecting to the server.",
+                    py::arg("func"))
+        
+        .def("set_iterate_callback",
+                    &MOOS::AppWrapper::SetIterateCallback,
+                    "Set the callback to be invoked at each iteration. "
+                    "This is the main work loop of the application.",
+                    py::arg("func"))
+        
         ;
 
 

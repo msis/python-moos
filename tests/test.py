@@ -355,6 +355,91 @@ class pyMOOSTestCase(unittest.TestCase):
 
         c.close(True)
 
+    def test_40_app_basic(self):
+        """Test basic app functionality"""
+        logger.debug(' on ')
+        a = pymoos.app()
+        
+        self.startup_called = False
+        self.connect_called = False
+        
+        def on_startup():
+            logger.debug('on_startup called')
+            self.startup_called = True
+            a.set_app_freq(10.0)
+            a.set_comms_freq(10.0)
+            return True
+        
+        def on_connect_to_server():
+            logger.debug('on_connect_to_server called')
+            self.connect_called = True
+            self.assertTrue(a.register('TEST_APP_VAR', 0))
+            return True
+        
+        self.iteration_count = 0
+        def iterate():
+            self.iteration_count += 1
+            logger.debug(f'iterate called {self.iteration_count}')
+            if self.iteration_count >= 3:
+                return False  # Stop after 3 iterations
+            return True
+        
+        a.set_on_start_up_callback(on_startup)
+        a.set_on_connect_to_server_callback(on_connect_to_server)
+        a.set_iterate_callback(iterate)
+        
+        # Run the app (will block until iterate returns False)
+        a.run('localhost', 9000, 'test_app_basic')
+        
+        # Verify callbacks were called
+        self.assertTrue(self.startup_called)
+        self.assertTrue(self.connect_called)
+        self.assertEqual(self.iteration_count, 3)
+
+    def test_41_app_messaging(self):
+        """Test app messaging functionality"""
+        logger.debug(' on ')
+        a = pymoos.app()
+        
+        self.received_mail = False
+        
+        def on_connect_to_server():
+            logger.debug('on_connect_to_server called')
+            self.assertTrue(a.register('TEST_APP_MSG', 0))
+            return True
+        
+        def on_new_mail(mail):
+            logger.debug(f'on_new_mail called with {len(mail)} messages')
+            for msg in mail:
+                if msg.is_name('TEST_APP_MSG'):
+                    self.assertEqual(msg.string(), 'test message')
+                    self.received_mail = True
+            return True
+        
+        self.iteration_count = 0
+        def iterate():
+            self.iteration_count += 1
+            logger.debug(f'iterate called {self.iteration_count}')
+            
+            if self.iteration_count == 1:
+                # Send a message on first iteration
+                a.notify('TEST_APP_MSG', 'test message', pymoos.time())
+            elif self.iteration_count >= 5:
+                # Stop after giving time for message to arrive
+                return False
+            
+            return True
+        
+        a.set_on_connect_to_server_callback(on_connect_to_server)
+        a.set_on_new_mail_callback(on_new_mail)
+        a.set_iterate_callback(iterate)
+        
+        # Run the app
+        a.run('localhost', 9000, 'test_app_messaging')
+        
+        # Verify we received our message
+        self.assertTrue(self.received_mail)
+
 
 if __name__ == '__main__':
     unittest.main()
