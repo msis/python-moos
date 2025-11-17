@@ -65,10 +65,11 @@ def main():
     app.set_on_new_mail_callback(on_new_mail)
     app.set_iterate_callback(iterate)
     
-    # Run the application (this blocks until iterate returns False)
-    # You can optionally provide a mission file path for configuration:
-    # app.run('localhost', 9000, 'pymoos_simple_app', 'simpleapp.moos')
-    # Or run without a mission file (using defaults in on_startup):
+    # Standard MOOS pattern: Run with mission file
+    # The mission file contains ServerHost, ServerPort, and Community
+    # app.run('simpleapp.moos')
+    
+    # Alternative: Run without mission file (provide server, port, name manually)
     app.run('localhost', 9000, 'pymoos_simple_app')
 
 if __name__ == "__main__":

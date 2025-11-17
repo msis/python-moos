@@ -73,11 +73,15 @@ app.set_on_start_up_callback(on_startup)
 app.set_on_connect_to_server_callback(on_connect_to_server)
 app.set_iterate_callback(iterate)
 
-# Optionally provide a mission file for configuration
-app.run('localhost', 9000, 'my_app', 'my_mission.moos')
+# Standard MOOS pattern: Run with mission file
+# ServerHost, ServerPort, and Community are read from the mission file
+app.run('my_mission.moos')
+
+# Alternative: Run without mission file (provide connection details manually)
+# app.run('localhost', 9000, 'my_app')
 ```
 
-The `app` class automatically handles `AppTick` and `CommsTick` from the mission file. 
+The `app` class automatically reads `ServerHost`, `ServerPort`, `AppTick`, and `CommsTick` from the mission file. 
 For custom configuration parameters, use:
 - `get_configuration_string(param)` - Read string parameters
 - `get_configuration_double(param)` - Read numeric parameters

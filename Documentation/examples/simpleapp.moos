@@ -1,5 +1,5 @@
 // Example mission file for simpleapp.py
-// To run: python simpleapp.py --mission_file=simpleapp.moos
+// Standard MOOS pattern: python simpleapp.py (modify code to call app.run('simpleapp.moos'))
 
 ServerHost = localhost
 ServerPort = 9000

@@ -229,12 +229,24 @@ public:
         // Clean shutdown
     }
 
-    bool Run(const std::string & sServer, int Port, const std::string & sMyName, const std::string & sMissionFile = "") {
+    // Standard MOOS pattern: Run with mission file (reads server/port/name from file)
+    bool Run(const std::string & sMissionFile) {
+        SetMissionFile(sMissionFile);
+        return BASE::Run();
+    }
+
+    // Alternative: Run with explicit parameters (for when mission file is not used)
+    bool Run(const std::string & sServer, int Port, const std::string & sMyName) {
         SetAppName(sMyName);
         SetServer(sServer, Port);
-        if (!sMissionFile.empty()) {
-            SetMissionFile(sMissionFile);
-        }
+        return BASE::Run();
+    }
+
+    // Run with explicit parameters and mission file
+    bool Run(const std::string & sServer, int Port, const std::string & sMyName, const std::string & sMissionFile) {
+        SetAppName(sMyName);
+        SetServer(sServer, Port);
+        SetMissionFile(sMissionFile);
         return BASE::Run();
     }
 
@@ -747,10 +759,19 @@ PYBIND11_MODULE(pymoos, m) {
     py::class_<MOOS::AppWrapper, CMOOSApp>(m, "app")
         .def(py::init<>())
 
-        .def("run", &MOOS::AppWrapper::Run,
-                    "Run the MOOS application.",
-                    py::arg("server"), py::arg("port"), py::arg("name"), 
-                    py::arg("mission_file") = "")
+        .def("run", static_cast<bool(MOOS::AppWrapper::*)(const std::string&)>(&MOOS::AppWrapper::Run),
+                    "Run the MOOS application with mission file. "
+                    "Server, port, and app name are read from the mission file.",
+                    py::arg("mission_file"))
+        
+        .def("run", static_cast<bool(MOOS::AppWrapper::*)(const std::string&, int, const std::string&)>(&MOOS::AppWrapper::Run),
+                    "Run the MOOS application with explicit server, port, and name. "
+                    "Use this when not using a mission file.",
+                    py::arg("server"), py::arg("port"), py::arg("name"))
+        
+        .def("run", static_cast<bool(MOOS::AppWrapper::*)(const std::string&, int, const std::string&, const std::string&)>(&MOOS::AppWrapper::Run),
+                    "Run the MOOS application with both explicit parameters and mission file.",
+                    py::arg("server"), py::arg("port"), py::arg("name"), py::arg("mission_file"))
         
         .def("fetch", &MOOS::AppWrapper::FetchMailAsVector,
                     "Fetch incoming mail as a vector.")
