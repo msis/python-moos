@@ -13,28 +13,20 @@ app = pymoos.app()
 def on_startup():
     print("App starting up...")
     
-    # Read configuration from the mission file
+    # Note: AppTick and CommsTick from the mission file are automatically
+    # handled by CMOOSApp - you don't need to read or set them manually.
+    
+    # Read custom configuration parameters from the mission file
     # The mission file should have a ProcessConfig block for this app
-    success, freq = app.get_configuration_double('app_freq')
-    if success:
-        print(f"Setting app frequency from config: {freq} Hz")
-        app.set_app_freq(freq)
-    else:
-        print("Using default app frequency: 1.0 Hz")
-        app.set_app_freq(1.0)
-    
-    success, comms_freq = app.get_configuration_double('comms_freq')
-    if success:
-        print(f"Setting comms frequency from config: {comms_freq} Hz")
-        app.set_comms_freq(comms_freq)
-    else:
-        print("Using default comms frequency: 5.0 Hz")
-        app.set_comms_freq(5.0)
-    
-    # Read other configuration parameters
     success, var_name = app.get_configuration_string('variable_name')
     if success:
         print(f"Will publish to variable: {var_name}")
+    else:
+        print("Using default variable name: simple_app_var")
+    
+    success, max_iter = app.get_configuration_int('max_iterations')
+    if success:
+        print(f"Will run for {max_iter} iterations")
     
     return True
 
@@ -50,7 +42,7 @@ def on_new_mail(mail):
         msg.trace()
     return True
 
-# Iterate is the main work loop, called at the frequency set by set_app_freq
+# Iterate is the main work loop, called at the frequency set by AppTick in the mission file
 iteration_count = 0
 def iterate():
     global iteration_count

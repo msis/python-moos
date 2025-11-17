@@ -15,12 +15,10 @@ ProcessConfig = MOOSDB
 
 ProcessConfig = pymoos_simple_app
 {
-  AppTick   = 1.0
-  CommsTick = 5.0
+  AppTick   = 2.0
+  CommsTick = 10.0
   
   // Custom configuration parameters
-  app_freq = 2.0
-  comms_freq = 10.0
   variable_name = simple_app_var
   max_iterations = 10
 }

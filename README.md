@@ -55,12 +55,11 @@ import pymoos
 app = pymoos.app()
 
 def on_startup():
-    # Read configuration from mission file
-    success, freq = app.get_configuration_double('app_freq')
+    # AppTick and CommsTick are automatically read from mission file
+    # Read custom configuration parameters
+    success, my_param = app.get_configuration_string('my_param')
     if success:
-        app.set_app_freq(freq)
-    else:
-        app.set_app_freq(10.0)  # Default Hz
+        print(f"Configuration parameter: {my_param}")
     return True
 
 def on_connect_to_server():
@@ -78,7 +77,8 @@ app.set_iterate_callback(iterate)
 app.run('localhost', 9000, 'my_app', 'my_mission.moos')
 ```
 
-The `app` class supports reading configuration from MOOS mission files using:
+The `app` class automatically handles `AppTick` and `CommsTick` from the mission file. 
+For custom configuration parameters, use:
 - `get_configuration_string(param)` - Read string parameters
 - `get_configuration_double(param)` - Read numeric parameters
 - `get_configuration_int(param)` - Read integer parameters
