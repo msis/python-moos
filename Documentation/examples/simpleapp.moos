@@ -1,0 +1,24 @@
+// Example mission file for simpleapp.py
+// Standard MOOS pattern: python simpleapp.py (modify code to call app.run('simpleapp.moos'))
+
+ServerHost = localhost
+ServerPort = 9000
+Community  = pymoos_example
+
+// Start MOOSDB with: MOOSDB simpleapp.moos
+
+ProcessConfig = MOOSDB
+{
+  ServerHost = localhost
+  ServerPort = 9000
+}
+
+ProcessConfig = pymoos_simple_app
+{
+  AppTick   = 2.0
+  CommsTick = 10.0
+  
+  // Custom configuration parameters
+  variable_name = simple_app_var
+  max_iterations = 10
+}

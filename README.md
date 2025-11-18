@@ -23,3 +23,74 @@ cd python-moos
 python setup.py build
 python setup.py install
 ```
+
+# Usage
+
+python-moos provides two main classes for interacting with MOOS:
+
+## pymoos.comms - Asynchronous Communications
+
+For simple publish/subscribe communication with the MOOSDB:
+
+```python
+import pymoos
+
+comms = pymoos.comms()
+
+def on_connect():
+    return comms.register('MY_VAR', 0)
+
+comms.set_on_connect_callback(on_connect)
+comms.run('localhost', 9000, 'my_client')
+```
+
+See `Documentation/examples/simplecomms.py` for a complete example.
+
+## pymoos.app - MOOS Application Framework
+
+For building full MOOS applications with structured lifecycle callbacks:
+
+```python
+import pymoos
+
+app = pymoos.app()
+
+def on_startup():
+    # AppTick and CommsTick are automatically read from mission file
+    # Read custom configuration parameters
+    success, my_param = app.get_configuration_string('my_param')
+    if success:
+        print(f"Configuration parameter: {my_param}")
+    return True
+
+def on_connect_to_server():
+    return app.register('MY_VAR', 0)
+
+def iterate():
+    # Main application loop
+    return True
+
+app.set_on_start_up_callback(on_startup)
+app.set_on_connect_to_server_callback(on_connect_to_server)
+app.set_iterate_callback(iterate)
+
+# Standard MOOS pattern: app name and mission file
+# Mission file contains ServerHost, ServerPort, AppTick, CommsTick, and Community
+app.run('my_app', 'my_mission.moos')
+
+# Alternative: Run without specifying mission file (uses default 'Mission.moos')
+# app.run('my_app')
+```
+
+The `app` class uses CMOOSApp::Run(app_name, mission_file) from the MOOS library.
+The mission file automatically configures `ServerHost`, `ServerPort`, `AppTick`, and `CommsTick`. 
+For custom configuration parameters, use:
+- `get_configuration_string(param)` - Read string parameters
+- `get_configuration_double(param)` - Read numeric parameters
+- `get_configuration_int(param)` - Read integer parameters
+- `get_configuration_bool(param)` - Read boolean parameters
+
+All methods return a tuple `(success, value)`.
+
+See `Documentation/examples/simpleapp.py` for a complete example.
+

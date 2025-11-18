@@ -355,6 +355,224 @@ class pyMOOSTestCase(unittest.TestCase):
 
         c.close(True)
 
+    def test_40_app_basic(self):
+        """Test basic app functionality"""
+        logger.debug(' on ')
+        
+        # Create a temporary mission file
+        import tempfile
+        import os
+        
+        mission_content = """
+ServerHost = localhost
+ServerPort = 9000
+Community  = pymoos_test_db
+
+ProcessConfig = test_app_basic
+{
+    AppTick   = 10.0
+    CommsTick = 10.0
+}
+"""
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.moos', delete=False) as f:
+            f.write(mission_content)
+            mission_file = f.name
+        
+        try:
+            a = pymoos.app()
+            
+            self.startup_called = False
+            self.connect_called = False
+            
+            def on_startup():
+                logger.debug('on_startup called')
+                self.startup_called = True
+                return True
+            
+            def on_connect_to_server():
+                logger.debug('on_connect_to_server called')
+                self.connect_called = True
+                self.assertTrue(a.register('TEST_APP_VAR', 0))
+                return True
+            
+            self.iteration_count = 0
+            def iterate():
+                self.iteration_count += 1
+                logger.debug(f'iterate called {self.iteration_count}')
+                if self.iteration_count >= 3:
+                    return False  # Stop after 3 iterations
+                return True
+            
+            a.set_on_start_up_callback(on_startup)
+            a.set_on_connect_to_server_callback(on_connect_to_server)
+            a.set_iterate_callback(iterate)
+            
+            # Run the app (will block until iterate returns False)
+            a.run('test_app_basic', mission_file)
+            
+            # Verify callbacks were called
+            self.assertTrue(self.startup_called)
+            self.assertTrue(self.connect_called)
+            self.assertEqual(self.iteration_count, 3)
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(mission_file):
+                os.unlink(mission_file)
+
+    def test_41_app_messaging(self):
+        """Test app messaging functionality"""
+        logger.debug(' on ')
+        
+        # Create a temporary mission file
+        import tempfile
+        import os
+        
+        mission_content = """
+ServerHost = localhost
+ServerPort = 9000
+Community  = pymoos_test_db
+
+ProcessConfig = test_app_messaging
+{
+    AppTick   = 10.0
+    CommsTick = 10.0
+}
+"""
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.moos', delete=False) as f:
+            f.write(mission_content)
+            mission_file = f.name
+        
+        try:
+            a = pymoos.app()
+            
+            self.received_mail = False
+            
+            def on_connect_to_server():
+                logger.debug('on_connect_to_server called')
+                self.assertTrue(a.register('TEST_APP_MSG', 0))
+                return True
+            
+            def on_new_mail(mail):
+                logger.debug(f'on_new_mail called with {len(mail)} messages')
+                for msg in mail:
+                    if msg.is_name('TEST_APP_MSG'):
+                        self.assertEqual(msg.string(), 'test message')
+                        self.received_mail = True
+                return True
+            
+            self.iteration_count = 0
+            def iterate():
+                self.iteration_count += 1
+                logger.debug(f'iterate called {self.iteration_count}')
+                
+                if self.iteration_count == 1:
+                    # Send a message on first iteration
+                    a.notify('TEST_APP_MSG', 'test message', pymoos.time())
+                elif self.iteration_count >= 5:
+                    # Stop after giving time for message to arrive
+                    return False
+                
+                return True
+            
+            a.set_on_connect_to_server_callback(on_connect_to_server)
+            a.set_on_new_mail_callback(on_new_mail)
+            a.set_iterate_callback(iterate)
+            
+            # Run the app
+            a.run('test_app_messaging', mission_file)
+            
+            # Verify we received our message
+            self.assertTrue(self.received_mail)
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(mission_file):
+                os.unlink(mission_file)
+
+    def test_42_app_configuration(self):
+        """Test app configuration reading"""
+        logger.debug(' on ')
+        
+        # Create a temporary mission file
+        import tempfile
+        import os
+        
+        mission_content = """
+ServerHost = localhost
+ServerPort = 9000
+Community  = pymoos_test_db
+
+ProcessConfig = test_app_config
+{
+    test_string = hello_world
+    test_double = 3.14
+    test_int = 42
+    test_bool = true
+}
+"""
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.moos', delete=False) as f:
+            f.write(mission_content)
+            mission_file = f.name
+        
+        try:
+            a = pymoos.app()
+            
+            self.config_read = False
+            self.test_values = {}
+            
+            def on_startup():
+                logger.debug('on_startup called')
+                
+                # Read configuration parameters
+                success, val = a.get_configuration_string('test_string')
+                if success:
+                    self.test_values['test_string'] = val
+                
+                success, val = a.get_configuration_double('test_double')
+                if success:
+                    self.test_values['test_double'] = val
+                
+                success, val = a.get_configuration_int('test_int')
+                if success:
+                    self.test_values['test_int'] = val
+                
+                success, val = a.get_configuration_bool('test_bool')
+                if success:
+                    self.test_values['test_bool'] = val
+                
+                self.config_read = True
+                a.set_app_freq(10.0)
+                return True
+            
+            self.iteration_count = 0
+            def iterate():
+                self.iteration_count += 1
+                if self.iteration_count >= 2:
+                    return False
+                return True
+            
+            a.set_on_start_up_callback(on_startup)
+            a.set_iterate_callback(iterate)
+            
+            # Run the app with mission file
+            a.run('test_app_config', mission_file)
+            
+            # Verify configuration was read
+            self.assertTrue(self.config_read)
+            self.assertEqual(self.test_values.get('test_string'), 'hello_world')
+            self.assertEqual(self.test_values.get('test_double'), 3.14)
+            self.assertEqual(self.test_values.get('test_int'), 42)
+            self.assertEqual(self.test_values.get('test_bool'), True)
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(mission_file):
+                os.unlink(mission_file)
+
 
 if __name__ == '__main__':
     unittest.main()
