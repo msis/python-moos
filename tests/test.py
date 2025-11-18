@@ -389,7 +389,7 @@ class pyMOOSTestCase(unittest.TestCase):
         a.set_iterate_callback(iterate)
         
         # Run the app (will block until iterate returns False)
-        a.run('localhost', 9000, 'test_app_basic')
+        a.run('test_app_basic', '', 'localhost', 9000)
         
         # Verify callbacks were called
         self.assertTrue(self.startup_called)
@@ -435,7 +435,7 @@ class pyMOOSTestCase(unittest.TestCase):
         a.set_iterate_callback(iterate)
         
         # Run the app
-        a.run('localhost', 9000, 'test_app_messaging')
+        a.run('test_app_messaging', '', 'localhost', 9000)
         
         # Verify we received our message
         self.assertTrue(self.received_mail)
@@ -507,7 +507,7 @@ ProcessConfig = test_app_config
             a.set_iterate_callback(iterate)
             
             # Run the app with mission file
-            a.run('localhost', 9000, 'test_app_config', mission_file)
+            a.run('test_app_config', mission_file, 'localhost', 9000)
             
             # Verify configuration was read
             self.assertTrue(self.config_read)

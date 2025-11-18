@@ -65,12 +65,12 @@ def main():
     app.set_on_new_mail_callback(on_new_mail)
     app.set_iterate_callback(iterate)
     
-    # Standard MOOS pattern: Run with mission file
+    # Standard MOOS pattern: app_name and mission file
     # The mission file contains ServerHost, ServerPort, and Community
-    # app.run('simpleapp.moos')
+    # app.run('pymoos_simple_app', 'simpleapp.moos')
     
-    # Alternative: Run without mission file (provide server, port, name manually)
-    app.run('localhost', 9000, 'pymoos_simple_app')
+    # Alternative: Run without mission file (provide server and port explicitly)
+    app.run('pymoos_simple_app', '', 'localhost', 9000)
 
 if __name__ == "__main__":
     main()

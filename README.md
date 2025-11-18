@@ -73,15 +73,16 @@ app.set_on_start_up_callback(on_startup)
 app.set_on_connect_to_server_callback(on_connect_to_server)
 app.set_iterate_callback(iterate)
 
-# Standard MOOS pattern: Run with mission file
+# Standard MOOS pattern: Run with app name and mission file
 # ServerHost, ServerPort, and Community are read from the mission file
-app.run('my_mission.moos')
+app.run('my_app', 'my_mission.moos')
 
 # Alternative: Run without mission file (provide connection details manually)
-# app.run('localhost', 9000, 'my_app')
+# app.run('my_app', '', 'localhost', 9000)
 ```
 
-The `app` class automatically reads `ServerHost`, `ServerPort`, `AppTick`, and `CommsTick` from the mission file. 
+The `app` class uses the standard CMOOSApp::Run(app_name, argc, argv) pattern internally.
+When you provide a mission file, it automatically reads `ServerHost`, `ServerPort`, `AppTick`, and `CommsTick`. 
 For custom configuration parameters, use:
 - `get_configuration_string(param)` - Read string parameters
 - `get_configuration_double(param)` - Read numeric parameters
