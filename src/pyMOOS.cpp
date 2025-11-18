@@ -229,37 +229,16 @@ public:
         // Clean shutdown
     }
 
-    // Python-friendly wrapper that creates command-line arguments for CMOOSApp::Run()
-    // Standard MOOS pattern: Run(app_name, mission_file, [additional args])
-    bool Run(const std::string & sAppName, const std::string & sMissionFile = "", 
-             const std::string & sServerHost = "", int nServerPort = 0) {
-        
-        // Build argc/argv from parameters
-        std::vector<std::string> args;
-        args.push_back(sAppName); // argv[0] is typically the program name
-        
+    // Python-friendly wrapper for CMOOSApp::Run()
+    // Uses the actual Run() overloads from CMOOSApp header
+    bool Run(const std::string & sAppName, const std::string & sMissionFile = "") {
         if (!sMissionFile.empty()) {
-            args.push_back(sMissionFile);
+            // Use Run(sName, sMissionFile) overload
+            return BASE::Run(sAppName, sMissionFile);
+        } else {
+            // Use Run(sName) with default mission file
+            return BASE::Run(sAppName);
         }
-        
-        if (!sServerHost.empty()) {
-            args.push_back("--moos_host=" + sServerHost);
-        }
-        
-        if (nServerPort > 0) {
-            args.push_back("--moos_port=" + std::to_string(nServerPort));
-        }
-        
-        // Convert to argc/argv format
-        int argc = static_cast<int>(args.size());
-        std::vector<char*> argv;
-        for (auto& arg : args) {
-            argv.push_back(const_cast<char*>(arg.c_str()));
-        }
-        argv.push_back(nullptr); // NULL terminator
-        
-        // Call the real CMOOSApp::Run(app_name, argc, argv)
-        return BASE::Run(sAppName, argc, argv.data());
     }
 
     //we can support vectors of objects by not lists so
@@ -772,16 +751,12 @@ PYBIND11_MODULE(pymoos, m) {
         .def(py::init<>())
 
         .def("run", &MOOS::AppWrapper::Run,
-                    "Run the MOOS application. Uses standard MOOS Run(app_name, argc, argv) pattern.\n"
+                    "Run the MOOS application using CMOOSApp::Run(app_name, mission_file).\n"
                     "Parameters:\n"
                     "  app_name: Name of the application\n"
-                    "  mission_file: Optional path to .moos mission file (reads ServerHost, ServerPort, etc.)\n"
-                    "  server_host: Optional server hostname (overrides mission file)\n"
-                    "  server_port: Optional server port (overrides mission file)",
+                    "  mission_file: Optional path to .moos mission file (default: 'Mission.moos')",
                     py::arg("app_name"),
-                    py::arg("mission_file") = "",
-                    py::arg("server_host") = "",
-                    py::arg("server_port") = 0)
+                    py::arg("mission_file") = "")
         
         .def("fetch", &MOOS::AppWrapper::FetchMailAsVector,
                     "Fetch incoming mail as a vector.")

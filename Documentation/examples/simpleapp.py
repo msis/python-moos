@@ -66,11 +66,11 @@ def main():
     app.set_iterate_callback(iterate)
     
     # Standard MOOS pattern: app_name and mission file
-    # The mission file contains ServerHost, ServerPort, and Community
-    # app.run('pymoos_simple_app', 'simpleapp.moos')
+    # The mission file contains ServerHost, ServerPort, AppTick, CommsTick, and Community
+    app.run('pymoos_simple_app', 'simpleapp.moos')
     
-    # Alternative: Run without mission file (provide server and port explicitly)
-    app.run('pymoos_simple_app', '', 'localhost', 9000)
+    # Alternative: Run without mission file (uses default Mission.moos)
+    # app.run('pymoos_simple_app')
 
 if __name__ == "__main__":
     main()
